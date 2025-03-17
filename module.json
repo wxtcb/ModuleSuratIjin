@@ -1,0 +1,13 @@
+{
+    "name": "SuratIjin",
+    "alias": "suratijin",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\SuratIjin\\Providers\\SuratIjinServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}
