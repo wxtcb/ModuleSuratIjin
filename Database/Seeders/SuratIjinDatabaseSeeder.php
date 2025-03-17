@@ -16,6 +16,7 @@ class SuratIjinDatabaseSeeder extends Seeder
     {
         Model::unguard();
 
-        // $this->call("OthersTableSeeder");
+        $this->call(MenuModulSuratIjinTableSeeder::class);
+
     }
 }
