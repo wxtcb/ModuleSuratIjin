@@ -35,7 +35,7 @@ class MenuModulSuratijinTableSeeder extends Seeder
                 'url' => 'suratijin/terlambat',
                 'can' => serialize(['admin']),
                 'icon' => 'far fa-circle',
-                'urut' => 1,
+                'urut' => 2,
                 'parent_id' => $menu->id,
                 'active' => serialize(['suratijin/terlambat', 'suratijin/terlambat*']),
             ]);
@@ -47,7 +47,7 @@ class MenuModulSuratijinTableSeeder extends Seeder
                 'url' => 'suratijin/lupaabsen',
                 'can' => serialize(['admin']),
                 'icon' => 'far fa-circle',
-                'urut' => 1,
+                'urut' => 3,
                 'parent_id' => $menu->id,
                 'active' => serialize(['suratijin/lupaabsen', 'suratijin/lupaabsen*']),
             ]);

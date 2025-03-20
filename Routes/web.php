@@ -11,6 +11,14 @@
 |
 */
 
+use Illuminate\Support\Facades\Route;
+
 Route::prefix('suratijin')->group(function() {
-    Route::get('/', 'SuratIjinController@index');
+    Route::prefix('terlambat')->group(function() {
+        Route::get('/', 'TerlambatController@index'); 
+    });
+
+    Route::prefix('lupaabsen')->group(function() {
+        Route::get('/', 'LupaAbsenController@index'); 
+    });
 });
