@@ -15,7 +15,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('suratijin')->group(function() {
     Route::prefix('terlambat')->group(function() {
-        Route::get('/', 'TerlambatController@index'); 
+        Route::get('/', 'TerlambatController@index')->name('terlambat.index'); 
+        Route::get('/create', 'TerlambatController@create')->name('terlambat.create'); 
+        Route::post('/store', 'TerlambatController@store')->name('terlambat.store'); 
+        Route::get('/edit/{access_token}', 'TerlambatController@edit')->name('terlambat.edit');
+        Route::put('/update/{access_token}', 'TerlambatController@update')->name('terlambat.update');
     });
 
     Route::prefix('lupaabsen')->group(function() {
