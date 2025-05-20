@@ -20,9 +20,11 @@ class CreateTerlambatTable extends Migration
             $table->string('hari');
             $table->date('tanggal');
             $table->string('alasan');
+            $table->string('status');
             $table->string('access_token')->nullable();
             $table->unsignedBigInteger('pegawai_id');
             $table->unsignedBigInteger('pejabat_id');
+            $table->timestamp('tanggal_disetujui_pejabat')->nullable();
             $table->unsignedBigInteger('tim_kerja_id');
             $table->foreign('pegawai_id')->references('id')->on('pegawais')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('pejabat_id')->references('id')->on('pejabats')->onDelete('cascade')->onUpdate('cascade');

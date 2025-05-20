@@ -20,9 +20,14 @@ Route::prefix('suratijin')->group(function() {
         Route::post('/store', 'TerlambatController@store')->name('terlambat.store'); 
         Route::get('/edit/{access_token}', 'TerlambatController@edit')->name('terlambat.edit');
         Route::put('/update/{access_token}', 'TerlambatController@update')->name('terlambat.update');
+        Route::post('/terlambat/{access_token}/approve', 'TerlambatController@approve')->name('terlambat.approve');
+        Route::post('/terlambat/{access_token}/approve-kepegawaian', 'TerlambatController@approvedByKepegawaian')->name('terlambat.approve-kepegawaian');
+        Route::get('/print/{access_token}', 'TerlambatController@print')->name('terlambat.print');
     });
 
     Route::prefix('lupaabsen')->group(function() {
         Route::get('/', 'LupaAbsenController@index'); 
     });
 });
+
+Route::get('/scan/{access_token}', 'TerlambatController@scan')->name('terlambat.scan');
