@@ -367,7 +367,7 @@ class TerlambatController extends Controller
         $qrCodeImage = null;
 
         if ($terlambat->status === 'Disetujui') {
-            $qrCodeUrl = url("/scan/" . $terlambat->access_token); // pastikan rute ini sesuai
+            $qrCodeUrl = url("/scan/" . $terlambat->access_token); 
             $qrCodeImage = QrCode::format('svg')->size(100)->generate($qrCodeUrl);
         }
         
