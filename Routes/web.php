@@ -26,8 +26,16 @@ Route::prefix('suratijin')->group(function() {
     });
 
     Route::prefix('lupaabsen')->group(function() {
-        Route::get('/', 'LupaAbsenController@index'); 
+        Route::get('/', 'LupaAbsenController@index')->name('lupa.index');  
+        Route::get('/create', 'LupaAbsenController@create')->name('lupa.create'); 
+        Route::post('/store', 'LupaAbsenController@store')->name('lupa.store'); 
+        Route::get('/edit/{access_token}', 'LupaAbsenController@edit')->name('lupa.edit');
+        Route::put('/update/{access_token}', 'LupaAbsenController@update')->name('lupa.update');
+        Route::post('/lupa/{access_token}/approve', 'LupaAbsenController@approve')->name('lupa.approve');
+        Route::post('/lupa/{access_token}/approve-kepegawaian', 'LupaAbsenController@approvedByKepegawaian')->name('lupa.approve-kepegawaian');
+        Route::get('/print/{access_token}', 'LupaAbsenController@print')->name('lupa.print');
     });
 });
 
 Route::get('/scan/{access_token}', 'TerlambatController@scan')->name('terlambat.scan');
+Route::get('/scan_lupa_absen/{access_token}', 'LupaAbsenController@scan')->name('lupa.scan');
