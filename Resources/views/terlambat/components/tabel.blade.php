@@ -30,14 +30,14 @@
                 <a class="btn btn-info btn-sm" data-toggle="modal" data-target="#modalDetail-{{ $ijin->access_token }}">
                     <i class="nav-icon fas fa-eye"></i>
                 </a>
+                @if ($ijin->status === 'Disetujui')
+                <a class="btn btn-success btn-sm" href="{{ route('terlambat.print', $ijin->access_token) }}">
+                    <i class="nav-icon fas fa-book"></i>
+                </a>
+                @endif
                 @if (auth()->user()->role_aktif === 'admin' || auth()->user()->username === $ijin->pegawai->username)
                 <a class="btn btn-warning btn-sm" href="{{ route('terlambat.edit', $ijin->access_token) }}">
                     <i class="nav-icon fas fa-edit"></i>
-                </a>
-                @endif
-                @if ($ijin->status === 'Disetujui')
-                <a class="btn btn-info btn-sm" href="{{ route('terlambat.print', $ijin->access_token) }}">
-                    <i class="nav-icon fas fa-book"></i>
                 </a>
                 @endif
             </td>

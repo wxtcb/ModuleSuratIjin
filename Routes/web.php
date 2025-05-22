@@ -23,6 +23,7 @@ Route::prefix('suratijin')->group(function() {
         Route::post('/terlambat/{access_token}/approve', 'TerlambatController@approve')->name('terlambat.approve');
         Route::post('/terlambat/{access_token}/approve-kepegawaian', 'TerlambatController@approvedByKepegawaian')->name('terlambat.approve-kepegawaian');
         Route::get('/print/{access_token}', 'TerlambatController@print')->name('terlambat.print');
+        Route::post('/terlambat/{access_token}/reject', 'TerlambatController@reject')->name('terlambat.reject');
     });
 
     Route::prefix('lupaabsen')->group(function() {
@@ -34,6 +35,7 @@ Route::prefix('suratijin')->group(function() {
         Route::post('/lupa/{access_token}/approve', 'LupaAbsenController@approve')->name('lupa.approve');
         Route::post('/lupa/{access_token}/approve-kepegawaian', 'LupaAbsenController@approvedByKepegawaian')->name('lupa.approve-kepegawaian');
         Route::get('/print/{access_token}', 'LupaAbsenController@print')->name('lupa.print');
+        Route::post('/lupa/{access_token}/reject', 'LupaAbsenController@reject')->name('lupa.reject');
     });
 });
 

@@ -86,7 +86,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="jam" class="form-label">Jam</label>
-                                <input type="time" name="jam" id="jam" class="form-control" required>
+                                <input type="trxt" name="jam" id="jam" class="form-control" placeholder="Contoh: 1 Jam 30 Menit" required>
                             </div>
                         </div>
 
