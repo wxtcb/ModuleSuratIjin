@@ -357,6 +357,36 @@ class TerlambatController extends Controller
         }
     }
 
+    public function reject(Request $request, $access_token)
+    {
+        $terlambat = Terlambat::with('pegawai')->where('access_token', $access_token)->firstOrFail();
+
+        DB::beginTransaction();
+
+        try {
+            $username_login = auth()->user()->username;
+            $id_pegawai = Pegawai::where('username', $username_login)->first()->id;
+
+            $terlambat->update([
+                'status' => 'Ditolak',
+                'tanggal_disetujui_pejabat' => now(),
+            ]);
+
+            TerlambatLogs::create([
+                'terlambat_id' => $terlambat->id,
+                'status' => 'Ditolak oleh atasan',
+                'updated_by' => $id_pegawai,
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Surat izin berhasil ditolak.');
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return redirect()->back()->with('danger', 'Gagal menolak surat izin: ' . $th->getMessage());
+        }
+    }
+
     public function print($access_token)
     {
         $terlambat = Terlambat::where('access_token', $access_token)->firstOrFail();

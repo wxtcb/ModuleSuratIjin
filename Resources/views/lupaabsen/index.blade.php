@@ -125,6 +125,12 @@
                                                     <button type="submit" class="btn btn-success">Setujui</button>
                                                 </form>
                                             @endif
+                                            @if ($lupa->isKetuaTim && $lupa->status === 'Diproses')
+                                                <form action="{{ route('lupa.reject', $lupa->access_token) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-danger">Tolak</button>
+                                                </form>
+                                            @endif
                                             @if ($user->role_aktif === 'admin' && $lupa->status === 'Diajukan')
                                                 <form action="{{ route('lupa.approve-kepegawaian', $lupa->access_token) }}" method="POST" class="d-inline">
                                                     @csrf

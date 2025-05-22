@@ -351,6 +351,36 @@ class LupaAbsenController extends Controller
         }
     }
 
+        public function reject(Request $request, $access_token)
+    {
+        $lupa_absen = LupaAbsen::with('pegawai')->where('access_token', $access_token)->firstOrFail();
+
+        DB::beginTransaction();
+
+        try {
+            $username_login = auth()->user()->username;
+            $id_pegawai = Pegawai::where('username', $username_login)->first()->id;
+
+            $lupa_absen->update([
+                'status' => 'Ditolak',
+                'tanggal_disetujui_pejabat' => now(),
+            ]);
+
+            LupaAbsenLogs::create([
+                'lupa_absen_id' => $lupa_absen->id,
+                'status' => 'Ditolak oleh atasan',
+                'updated_by' => $id_pegawai,
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Surat izin berhasil ditolak.');
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return redirect()->back()->with('danger', 'Gagal menolak surat izin: ' . $th->getMessage());
+        }
+    }
+
     public function print($access_token)
     {
         $lupa_absen = LupaAbsen::where('access_token', $access_token)->firstOrFail();

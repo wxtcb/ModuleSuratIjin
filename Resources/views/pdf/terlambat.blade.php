@@ -189,36 +189,36 @@
         }
 
         .qr-footer {
-    margin-top: 40px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    font-size: 8pt;
-    position: relative;
-    page-break-inside: avoid;
-}
+            margin-top: 40px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            font-size: 8pt;
+            position: relative;
+            page-break-inside: avoid;
+        }
 
-.qr-footer .qr-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+        .qr-footer .qr-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-.qr-footer img {
-    width: 60px;
-    height: 60px;
-}
+        .qr-footer img {
+            width: 60px;
+            height: 60px;
+        }
 
-@media print {
-    .qr-footer {
-        position: fixed;
-        bottom: 0.3in;
-        left: 0;
-        right: 0;
-        width: 100%;
-        padding: 0 0.5in;
-    }
-}
+        @media print {
+            .qr-footer {
+                position: fixed;
+                bottom: 0.3in;
+                left: 0;
+                right: 0;
+                width: 100%;
+                padding: 0 0.5in;
+            }
+        }
     </style>
 </head>
 
@@ -245,7 +245,7 @@
 
         <hr style="margin: 10px 0;">
 
-        <h2>Surat Permohonan {{ $terlambat->jenis_ijin }}</h2>
+        <h2> PERMOHONAN IZIN DENGAN ALASAN YANG SAH </h2>
 
 
         <p>Yang bertanda tangan dibawah ini:</p>
@@ -275,7 +275,7 @@
             </tr>
         </table>
 
-        <p>Dengan ini mengajukan Permohonan izin untuk {{ $terlambat->jenis_ijin }} (selama {{ $terlambat->jam }} WIB), pada hari {{ $terlambat->hari }}, tanggal {{ date('d M Y', strtotime($terlambat->tanggal)) }} karena alasan yang sah, yaitu {{ $terlambat->alasan }}.
+        <p>Dengan ini mengajukan Permohonan izin untuk {{ $terlambat->jenis_ijin }} (selama {{ $terlambat->jam }}), pada hari {{ $terlambat->hari }}, tanggal {{ date('d M Y', strtotime($terlambat->tanggal)) }} karena alasan yang sah, yaitu {{ $terlambat->alasan }}.
         </p>
 
         <p>Demikian disampaikan kiranya menjadi maklum.</p>
@@ -331,7 +331,7 @@
         <p>Tembusan:</p>
         <p>1. Pejabat Eselon II yang bersangkutan <br> 2. Pejabat yang menangani Kepegawaian</p>
 
- 
+
 
         @if ($qrCodeImage)
         <div class="qr-footer">
@@ -343,7 +343,7 @@
                 </div>
             </div>
         </div>
-    @endif
+        @endif
     </div> <!-- Tutup .page-wrapper -->
 
 

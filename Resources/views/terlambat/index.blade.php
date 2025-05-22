@@ -130,6 +130,12 @@
                                                     <button type="submit" class="btn btn-success">Setujui</button>
                                                 </form>
                                             @endif
+                                            @if ($ijin->isKetuaTim && $ijin->status === 'Diproses')
+                                                <form action="{{ route('terlambat.reject', $ijin->access_token) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-danger">Tolak</button>
+                                                </form>
+                                            @endif
                                             @if ($user->role_aktif === 'admin' && $ijin->status === 'Diajukan')
                                                 <form action="{{ route('terlambat.approve-kepegawaian', $ijin->access_token) }}" method="POST" class="d-inline">
                                                     @csrf
