@@ -2,7 +2,6 @@
 @section('title', 'Lupa Absen')
 
 @section('content_header')
-<h1 class="m-0 text-dark">Rekapitulasi Lupa Absen</h1>
 @stop
 
 @section('content')

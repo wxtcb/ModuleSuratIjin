@@ -2,7 +2,6 @@
 @section('title', 'Surat Ijin')
 
 @section('content_header')
-<h1 class="m-0 text-dark">Rekapitulasi Surat Ijin</h1>
 @stop
 
 @section('content')
