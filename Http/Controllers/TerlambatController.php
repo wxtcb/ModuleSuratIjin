@@ -15,6 +15,7 @@ use Modules\Pengaturan\Entities\Pejabat;
 use Modules\Pengaturan\Entities\TimKerja;
 use Modules\SuratIjin\Entities\Terlambat;
 use Illuminate\Support\Str;
+use Modules\Setting\Entities\Libur;
 use Modules\SuratIjin\Entities\TerlambatLogs;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -82,25 +83,24 @@ class TerlambatController extends Controller
      */
     public function create()
     {
-        // Ambil data pegawai berdasarkan user yang login
         $pegawai = Pegawai::where('username', auth()->user()->username)->first();
-
-        // Ambil data keanggotaan tim kerja pegawai
         $anggota = Anggota::where('pegawai_id', $pegawai->id)->first();
-
-        // Ambil data tim kerja jika ada
         $tim = TimKerja::find($anggota->tim_kerja_id ?? null);
 
-        // Gunakan service untuk ambil data atasan
         $atasanService = new AtasanService();
         $ketua = $atasanService->getAtasanPegawai($pegawai->id);
 
-        // Kirim data ke view
+        $today = Carbon::today();
+        $libur = Libur::pluck('tanggal')->map(fn($tgl) => Carbon::parse($tgl)->format('Y-m-d'))->toArray();
+
+        $tanggalMundur = $this->hitungHariKerja($today, 5, 'mundur', $libur);
+        $tanggalMaju = $this->hitungHariKerja($today, 5, 'maju', $libur);
+
+        $tanggalMin = $tanggalMundur[4]->format('Y-m-d');
+        $tanggalMax = $tanggalMaju[4]->format('Y-m-d');
+
         return view('suratijin::terlambat.create', compact(
-            'pegawai',
-            'tim',
-            'anggota',
-            'ketua'
+            'pegawai', 'tim', 'anggota', 'ketua', 'tanggalMin', 'tanggalMax'
         ));
     }
 
@@ -114,7 +114,18 @@ class TerlambatController extends Controller
         $username_login = auth()->user()->username;
         $username_pegawai = Pegawai::where('username', $username_login)->first()->id;
 
-        // Validasi inputan
+        $today = Carbon::today();
+        $tanggalInput = Carbon::parse($request->tanggal);
+        $libur = Libur::pluck('tanggal')->map(fn($tgl) => Carbon::parse($tgl)->format('Y-m-d'))->toArray();
+
+        $tanggalMundur = $this->hitungHariKerja($today, 5, 'mundur', $libur);
+        $tanggalMaju = $this->hitungHariKerja($today, 5, 'maju', $libur);
+        $tanggalValid = collect($tanggalMundur)->merge($tanggalMaju)->map->format('Y-m-d')->toArray();
+
+        if (!in_array($tanggalInput->format('Y-m-d'), $tanggalValid)) {
+            return back()->withErrors(['tanggal' => 'Tanggal harus dalam rentang 5 hari kerja dari hari ini.'])->withInput();
+        }
+
         $request->validate([
             'pegawai_id' => 'required|exists:pegawais,id',
             'pejabat_id' => 'required|exists:pejabats,id',
@@ -125,13 +136,10 @@ class TerlambatController extends Controller
             'alasan' => 'required',
         ]);
 
-        // Generate access token
-        $uuid = Str::uuid()->toString();
-        $access_token = substr($uuid, 0, 12);
-
-        // Mulai transaksi database
         DB::beginTransaction();
         try {
+            $access_token = substr(Str::uuid()->toString(), 0, 12);
+
             $terlambat = Terlambat::create([
                 'pegawai_id' => $request->pegawai_id,
                 'pejabat_id' => $request->pejabat_id,
@@ -142,21 +150,17 @@ class TerlambatController extends Controller
                 'alasan' => $request->alasan,
                 'access_token' => $access_token,
                 'tim_kerja_id' => $request->tim_kerja_id,
-                'status' => 'Diajukan', // Status awal pengajuan
+                'status' => 'Diajukan',
             ]);
 
-            // Simpan log pengajuan ke tabel terlambat_logs
             TerlambatLogs::create([
                 'terlambat_id' => $terlambat->id,
                 'status' => 'Diajukan',
                 'updated_by' => $username_pegawai,
             ]);
 
-            // Commit transaksi
             DB::commit();
-
             return redirect()->route('terlambat.index')->with('success', 'Surat Izin berhasil diajukan.');
-            // Simpan data terlambat ke tabel terlambat
         } catch (\Throwable $th) {
             DB::rollBack();
             return redirect()->route('terlambat.index')->with('danger', 'Surat Izin gagal diajukan.');
@@ -205,13 +209,25 @@ class TerlambatController extends Controller
         $atasanService = new AtasanService();
         $ketua = $atasanService->getAtasanPegawai($ijin->pegawai_id);
 
+        // Hitung batas tanggal berdasarkan hari kerja
+        $today = Carbon::today();
+        $libur = Libur::pluck('tanggal')->map(fn($tgl) => Carbon::parse($tgl)->format('Y-m-d'))->toArray();
+
+        $tanggalMundur = $this->hitungHariKerja($today, 5, 'mundur', $libur);
+        $tanggalMaju = $this->hitungHariKerja($today, 5, 'maju', $libur);
+
+        $tanggalMin = $tanggalMundur[4]->format('Y-m-d');
+        $tanggalMax = $tanggalMaju[4]->format('Y-m-d');
+
         return view('suratijin::terlambat.edit', compact(
             'ijin',
             'pegawai',
             'anggota',
             'tim',
             'ketua',
-            'id_pejabat_login'
+            'id_pejabat_login',
+            'tanggalMin',
+            'tanggalMax'
         ));
     }
 
@@ -409,5 +425,21 @@ class TerlambatController extends Controller
         $terlambat = Terlambat::where('access_token', $access_token)->first();
         $logs = TerlambatLogs::where('terlambat_id', $terlambat->id)->get();
         return view('suratijin::terlambat.scan', compact('terlambat', 'logs'));
+    }
+
+    private function hitungHariKerja(Carbon $start, int $jumlahHari, string $arah, array $libur = [])
+    {
+        $hasil = [];
+        $step = $arah === 'maju' ? 1 : -1;
+        $tanggal = $start->copy();
+
+        while (count($hasil) < $jumlahHari) {
+            $tanggal->addDays($step);
+            if (!$tanggal->isWeekend() && !in_array($tanggal->format('Y-m-d'), $libur)) {
+                $hasil[] = $tanggal->copy();
+            }
+        }
+
+        return $hasil;
     }
 }

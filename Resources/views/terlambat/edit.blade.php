@@ -98,7 +98,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="tanggal" class="form-label">Tanggal</label>
-                                <input type="date" name="tanggal" id="tanggal" class="form-control" value="{{ $ijin->tanggal }}" required>
+                                <input type="date" name="tanggal" id="tanggal" class="form-control" value="{{ $ijin->tanggal }}" min="{{ $tanggalMin }}"max="{{ $tanggalMax }}" required>
                             </div>
                         </div>
 
