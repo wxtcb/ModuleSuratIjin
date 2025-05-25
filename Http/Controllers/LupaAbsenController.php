@@ -2,6 +2,7 @@
 
 namespace Modules\SuratIjin\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -14,6 +15,7 @@ use Modules\Pengaturan\Entities\TimKerja;
 use Modules\SuratIjin\Entities\LupaAbsen;
 use Modules\SuratIjin\Entities\LupaAbsenLogs;
 use Illuminate\Support\Str;
+use Modules\Setting\Entities\Libur;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class LupaAbsenController extends Controller
@@ -80,25 +82,30 @@ class LupaAbsenController extends Controller
      */
     public function create()
     {
-        // Ambil data pegawai berdasarkan user yang login
         $pegawai = Pegawai::where('username', auth()->user()->username)->first();
-
-        // Ambil data keanggotaan tim kerja pegawai
         $anggota = Anggota::where('pegawai_id', $pegawai->id)->first();
-
-        // Ambil data tim kerja jika ada
         $tim = TimKerja::find($anggota->tim_kerja_id ?? null);
 
-        // Gunakan service untuk ambil data atasan
         $atasanService = new AtasanService();
         $ketua = $atasanService->getAtasanPegawai($pegawai->id);
 
-        // Kirim data ke view
+        // Ambil hari libur
+        $today = Carbon::today();
+        $libur = Libur::pluck('tanggal')->map(fn($tgl) => Carbon::parse($tgl)->format('Y-m-d'))->toArray();
+
+        $tanggalMundur = $this->hitungHariKerja($today, 5, 'mundur', $libur);
+        $tanggalMaju = $this->hitungHariKerja($today, 5, 'maju', $libur);
+
+        $tanggalMin = $tanggalMundur[4]->format('Y-m-d');
+        $tanggalMax = $tanggalMaju[4]->format('Y-m-d');
+
         return view('suratijin::lupaabsen.create', compact(
             'pegawai',
             'tim',
             'anggota',
-            'ketua'
+            'ketua',
+            'tanggalMin',
+            'tanggalMax'
         ));
     }
 
@@ -178,7 +185,6 @@ class LupaAbsenController extends Controller
     {
         $user_login = auth()->user();
 
-        // Cek apakah user login adalah operator
         $id_pejabat_login = null;
         if ($user_login->role_aktif === 'operator') {
             $id_user_login = $user_login->id;
@@ -187,19 +193,23 @@ class LupaAbsenController extends Controller
             $id_pejabat_login = optional($pejabat_login)->id;
         }
 
-        // Ambil data surat ijin berdasarkan access token
         $lupa = LupaAbsen::where('access_token', $access_token)->firstOrFail();
-
-        // Ambil data pegawai yang mengajukan ijin
         $pegawai = Pegawai::find($lupa->pegawai_id);
-
-        // Ambil data anggota dan tim kerja
         $anggota = Anggota::where('pegawai_id', $lupa->pegawai_id)->first();
         $tim = TimKerja::find(optional($anggota)->tim_kerja_id);
 
-        // Ambil atasan
         $atasanService = new AtasanService();
         $ketua = $atasanService->getAtasanPegawai($lupa->pegawai_id);
+
+        // Hitung batas tanggal
+        $today = Carbon::today();
+        $libur = Libur::pluck('tanggal')->map(fn($tgl) => Carbon::parse($tgl)->format('Y-m-d'))->toArray();
+
+        $tanggalMundur = $this->hitungHariKerja($today, 5, 'mundur', $libur);
+        $tanggalMaju = $this->hitungHariKerja($today, 5, 'maju', $libur);
+
+        $tanggalMin = $tanggalMundur[4]->format('Y-m-d');
+        $tanggalMax = $tanggalMaju[4]->format('Y-m-d');
 
         return view('suratijin::lupaabsen.edit', compact(
             'lupa',
@@ -207,7 +217,9 @@ class LupaAbsenController extends Controller
             'anggota',
             'tim',
             'ketua',
-            'id_pejabat_login'
+            'id_pejabat_login',
+            'tanggalMin',
+            'tanggalMax'
         ));
     }
 
@@ -351,7 +363,7 @@ class LupaAbsenController extends Controller
         }
     }
 
-        public function reject(Request $request, $access_token)
+    public function reject(Request $request, $access_token)
     {
         $lupa_absen = LupaAbsen::with('pegawai')->where('access_token', $access_token)->firstOrFail();
 
@@ -404,4 +416,21 @@ class LupaAbsenController extends Controller
         $logs = LupaAbsenLogs::where('lupa_absen_id', $lupa_absen->id)->get();
         return view('suratijin::lupaabsen.scan', compact('lupa_absen', 'logs'));
     }
+
+    private function hitungHariKerja(Carbon $start, int $jumlahHari, string $arah, array $libur = [])
+    {
+        $hasil = [];
+        $step = $arah === 'maju' ? 1 : -1;
+        $tanggal = $start->copy();
+
+        while (count($hasil) < $jumlahHari) {
+            $tanggal->addDays($step);
+            if (!$tanggal->isWeekend() && !in_array($tanggal->format('Y-m-d'), $libur)) {
+                $hasil[] = $tanggal->copy();
+            }
+        }
+
+        return $hasil;
+    }
+
 }
