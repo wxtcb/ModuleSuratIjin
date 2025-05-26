@@ -35,10 +35,13 @@
                     <i class="nav-icon fas fa-book"></i>
                 </a>
                 @endif
-                @if (auth()->user()->role_aktif === 'admin' || auth()->user()->username === $ijin->pegawai->username)
-                <a class="btn btn-warning btn-sm" href="{{ route('terlambat.edit', $ijin->access_token) }}">
-                    <i class="nav-icon fas fa-edit"></i>
-                </a>
+                @if (
+                    (auth()->user()->role_aktif === 'admin' || auth()->user()->username === $ijin->pegawai->username) &&
+                    !in_array($ijin->status, ['Disetujui', 'Ditolak'])
+                )
+                    <a class="btn btn-warning btn-sm" href="{{ route('terlambat.edit', $ijin->access_token) }}">
+                        <i class="nav-icon fas fa-edit"></i>
+                    </a>
                 @endif
             </td>
         </tr>
