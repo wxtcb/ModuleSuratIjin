@@ -33,7 +33,10 @@
                     <i class="nav-icon fas fa-book"></i>
                 </a>
                 @endif
-                @if (auth()->user()->role_aktif === 'admin' || auth()->user()->username === $item->pegawai->username)
+                @if (
+                    (auth()->user()->role_aktif === 'admin' || auth()->user()->username === $item->pegawai->username) &&
+                    !in_array($item->status, ['Disetujui', 'Ditolak'])
+                )
                 <a class="btn btn-warning btn-sm" href="{{ route('lupa.edit', $item->access_token) }}">
                     <i class="nav-icon fas fa-edit"></i>
                 </a>
