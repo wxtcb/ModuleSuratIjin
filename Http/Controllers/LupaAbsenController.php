@@ -15,6 +15,8 @@ use Modules\Pengaturan\Entities\TimKerja;
 use Modules\SuratIjin\Entities\LupaAbsen;
 use Modules\SuratIjin\Entities\LupaAbsenLogs;
 use Illuminate\Support\Str;
+use Modules\Cuti\Services\FonnteService;
+use Modules\RekapKehadiran\Entities\KehadiranI;
 use Modules\Setting\Entities\Libur;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -41,7 +43,7 @@ class LupaAbsenController extends Controller
 
         if ($role === 'admin') {
             $lupa_absen = LupaAbsen::with('pegawai')->orderBy('tanggal', 'desc')->get();
-        } elseif ($role === 'kajur') {
+        } elseif ($role === 'kajur' || $role === 'kaunit') {
             $lupa_anggota = LupaAbsen::where('pejabat_id', $pejabat_id)
                 ->whereHas('logs', function ($query) {
                     $query->where('status', 'Telah diteruskan ke atasan');
@@ -49,7 +51,7 @@ class LupaAbsenController extends Controller
 
             $lupa_pribadi = LupaAbsen::where('pegawai_id', $pegawai_id)
                 ->with('pegawai')->orderBy('tanggal', 'desc')->get();
-        } elseif ($role === 'dosen') {
+        } elseif ($role === 'dosen' || $role === 'pegawai') {
             $lupa_pribadi = LupaAbsen::where('pegawai_id', $pegawai_id)
                 ->with('pegawai')->orderBy('tanggal', 'desc')->get();
         }
@@ -72,7 +74,11 @@ class LupaAbsenController extends Controller
         }
 
         return view('suratijin::lupaabsen.index', compact(
-            'lupa_absen', 'lupa_pribadi', 'lupa_anggota', 'pejabat_id', 'user'
+            'lupa_absen',
+            'lupa_pribadi',
+            'lupa_anggota',
+            'pejabat_id',
+            'user'
         ));
     }
 
@@ -97,7 +103,7 @@ class LupaAbsenController extends Controller
         $tanggalMaju = $this->hitungHariKerja($today, 5, 'maju', $libur);
 
         $tanggalMin = $tanggalMundur[4]->format('Y-m-d');
-        $tanggalMax = $tanggalMaju[4]->format('Y-m-d');
+        $tanggalMax = $tanggalMaju[0]->format('Y-m-d');
 
         return view('suratijin::lupaabsen.create', compact(
             'pegawai',
@@ -118,6 +124,8 @@ class LupaAbsenController extends Controller
     {
         $username_login = auth()->user()->username;
         $username_pegawai = Pegawai::where('username', $username_login)->first()->id;
+        $pegawai = Pegawai::where('username', $username_login)->first();
+        $pegawai_id = $pegawai->id;
 
         // Validasi inputan
         $request->validate([
@@ -132,6 +140,19 @@ class LupaAbsenController extends Controller
         // Generate access token
         $uuid = Str::uuid()->toString();
         $access_token = substr($uuid, 0, 12);
+
+        // ✅ Tambahkan validasi jumlah surat izin disetujui bulan ini
+        $suratBulanIni = LupaAbsen::where('pegawai_id', $pegawai_id)
+            ->whereMonth('tanggal', Carbon::now()->month)
+            ->whereYear('tanggal', Carbon::now()->year)
+            ->where('status', 'Disetujui') // hanya hitung yang disetujui
+            ->count();
+
+        if ($suratBulanIni >= 2) {
+            return back()->withErrors([
+                'limit' => 'Surat izin disetujui Anda sudah mencapai batas maksimal 2 kali dalam bulan ini.'
+            ])->withInput();
+        }
 
         // Mulai transaksi database
         DB::beginTransaction();
@@ -157,6 +178,16 @@ class LupaAbsenController extends Controller
 
             // Commit transaksi
             DB::commit();
+
+            // Send Whatsapp via fonnte
+            $fonnte = new FonnteService();
+            $target = '6285234063886';
+            $message = Pegawai::where('id', $username_pegawai)->first()->nama;
+            $response = $fonnte->sendText($target, $message . ' mengajukan ' . $request->jenis_ijin, [
+                'typing' => true,
+                'delay' => 2,
+                'countryCode' => '62',
+            ]);
 
             return redirect()->route('lupaa.index')->with('success', 'Surat Izin berhasil diajukan.');
             // Simpan data terlambat ke tabel terlambat
@@ -319,6 +350,17 @@ class LupaAbsenController extends Controller
 
             DB::commit();
 
+            // (Opsional) Kirim notifikasi WA
+            $fonnte = new FonnteService();
+            $target = '6285234063886';
+            $message = $username_login->nama . ' (Kepegawaian) meneruskan pengajuan ke atasan ' . $lupa_absen->jenis_ijin;
+
+            $fonnte->sendText($target, $message, [
+                'typing' => true,
+                'delay' => 2,
+                'countryCode' => '62',
+            ]);
+
             return redirect()->route('lupa.index')->with('success', 'Surat izin berhasil diteruskan ke atasan.');
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -328,38 +370,75 @@ class LupaAbsenController extends Controller
 
     public function approve($access_token)
     {
-        // Ambil data surat izin
-        $lupa_absen = LupaAbsen::with('pegawai')->where('access_token', $access_token)->firstOrFail();
-
-        // Mulai transaksi database
         DB::beginTransaction();
 
         try {
+            $lupa_absen = LupaAbsen::with('pegawai')->where('access_token', $access_token)->firstOrFail();
             $username_login = auth()->user()->username;
-            $username_pegawai = Pegawai::where('username', $username_login)->first()->id;
+            $pegawai_login = Pegawai::where('username', $username_login)->firstOrFail();
+            $pegawai_id = $lupa_absen->pegawai_id;
 
-            // Update status dan tanggal persetujuan
+            // Setujui surat yang dipilih
             $lupa_absen->update([
                 'status' => 'Disetujui',
                 'tanggal_disetujui_pejabat' => now(),
             ]);
 
-            // Tambahkan log status ke tabel lupa_absen_logs
             LupaAbsenLogs::create([
                 'lupa_absen_id' => $lupa_absen->id,
                 'status' => 'Telah disetujui atasan',
-                'updated_by' => $username_pegawai,
+                'updated_by' => $pegawai_login->id,
             ]);
 
-            // Commit transaksi
+            // Hitung jumlah surat disetujui di bulan yang sama
+            $bulan_ini = Carbon::parse($lupa_absen->tanggal)->month;
+            $tahun_ini = Carbon::parse($lupa_absen->tanggal)->year;
+
+            $disetujuiBulanIni = LupaAbsen::where('pegawai_id', $pegawai_id)
+                ->whereMonth('tanggal', $bulan_ini)
+                ->whereYear('tanggal', $tahun_ini)
+                ->where('status', 'Disetujui')
+                ->count();
+
+            // Jika kuota maksimal (2) sudah terpenuhi, batalkan sisanya
+            if ($disetujuiBulanIni >= 2) {
+                $suratLain = LupaAbsen::where('pegawai_id', $pegawai_id)
+                    ->whereMonth('tanggal', $bulan_ini)
+                    ->whereYear('tanggal', $tahun_ini)
+                    ->whereIn('status', ['Diajukan', 'Diproses'])
+                    ->where('id', '!=', $lupa_absen->id)
+                    ->get();
+
+                foreach ($suratLain as $surat) {
+                    $surat->update([
+                        'status' => 'Dibatalkan Otomatis',
+                    ]);
+
+                    LupaAbsenLogs::create([
+                        'lupa_absen_id' => $surat->id,
+                        'status' => 'Dibatalkan Otomatis (melebihi batas bulanan)',
+                        'updated_by' => $pegawai_login->id,
+                    ]);
+                }
+            }
+
             DB::commit();
+
+            // (Opsional) Kirim notifikasi WA
+            $fonnte = new FonnteService();
+            $target = '6285234063886';
+            $message = $pegawai_login->nama . ' menyetujui surat ijin ' . $lupa_absen->jenis_ijin;
+
+            $fonnte->sendText($target, $message, [
+                'typing' => true,
+                'delay' => 2,
+                'countryCode' => '62',
+            ]);
 
             return redirect()->back()->with('success', 'Surat izin berhasil disetujui.');
         } catch (\Throwable $th) {
-            // Rollback jika terjadi error
             DB::rollBack();
-
-            return redirect()->back()->with('danger', 'Surat izin gagal disetujui karena: ' . $th->getMessage());
+            return redirect()->back()->with('danger', 'Surat izin gagal disetujui: ' . $th->getMessage());
         }
     }
 
@@ -403,10 +482,10 @@ class LupaAbsenController extends Controller
         $qrCodeImage = null;
 
         if ($lupa_absen->status === 'Disetujui') {
-            $qrCodeUrl = url("/scan_lupa_absen/" . $lupa_absen->access_token); 
+            $qrCodeUrl = url("/scan_lupa_absen/" . $lupa_absen->access_token);
             $qrCodeImage = QrCode::format('svg')->size(100)->generate($qrCodeUrl);
         }
-        
+
         return view('suratijin::pdf.lupaabsen', compact('lupa_absen', 'atasan', 'qrCodeImage'));
     }
 
@@ -433,4 +512,41 @@ class LupaAbsenController extends Controller
         return $hasil;
     }
 
+    public function getHariDanKeterlambatan(Request $request)
+    {
+        $tanggal = Carbon::parse($request->tanggal);
+        Carbon::setLocale('id');
+        $hari = $tanggal->translatedFormat('l');
+
+        $pegawaiId = $request->pegawai_id;
+
+        // Ambil semua presensi pada tanggal itu
+        $presensiHariIni = KehadiranI::where('user_id', $pegawaiId)
+            ->whereDate('checktime', $tanggal)
+            ->get();
+
+        // Cek keberadaan I dan O
+        $hasMasuk = $presensiHariIni->contains(function ($log) {
+            return strtoupper($log->checktype) === 'I';
+        });
+
+        $hasPulang = $presensiHariIni->contains(function ($log) {
+            return strtoupper($log->checktype) === 'O';
+        });
+
+        // Hanya tangani dua kondisi
+        if ($hasMasuk && !$hasPulang) {
+            $statusPresensi = 'Lupa Absensi Pulang';
+        } elseif (!$hasMasuk && $hasPulang) {
+            $statusPresensi = 'Lupa Absensi Masuk';
+        } else {
+            // Tidak melakukan apa-apa jika lengkap atau tidak ada presensi
+            return response()->json([]);
+        }
+
+        return response()->json([
+            'hari' => $hari,
+            'status_presensi' => $statusPresensi,
+        ]);
+    }
 }
