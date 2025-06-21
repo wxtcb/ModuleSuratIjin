@@ -17,7 +17,7 @@ use Modules\SuratIjin\Entities\Terlambat;
 use Illuminate\Support\Str;
 use Modules\Cuti\Services\FonnteService;
 use Modules\RekapKehadiran\Entities\KehadiranI;
-use Modules\Setting\Entities\Libur;
+use Modules\RekapKehadiran\Entities\Libur;
 use Modules\SuratIjin\Entities\TerlambatLogs;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 

@@ -17,7 +17,7 @@ use Modules\SuratIjin\Entities\LupaAbsenLogs;
 use Illuminate\Support\Str;
 use Modules\Cuti\Services\FonnteService;
 use Modules\RekapKehadiran\Entities\KehadiranI;
-use Modules\Setting\Entities\Libur;
+use Modules\RekapKehadiran\Entities\Libur;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class LupaAbsenController extends Controller
